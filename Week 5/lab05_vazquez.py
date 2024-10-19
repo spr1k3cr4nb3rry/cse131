@@ -1,100 +1,96 @@
+# Name: Izzie Vazquez
+# Assignment Name: Lab 05: Sudoku Draft
+# Assignment Description: 
+#   -  Write a Python program that plays the game of Sudoku but does not enforce the rules. In this draft of the program, a player can place any number he or she wants in a given square. The program will be interactive, read from a file, and save data to a file. 
+# Reflection:
+#   - The hardest part of this week's lab for me was getting to formatting for the board right. I ended up having to look into the enumerate() function and browsing the W3Schools Python documentation for help getting the display_board() function just right.
+# Time taken:
+#   - Approximately 2 hours.
+
 import json
 
-# Load the Sudoku board from a file
 def load_board(filename):
+    """Load a Sudoku board from a JSON file."""
     with open(filename, 'r') as file:
-        game_data = json.load(file)
-        return game_data['board']
+        data = json.load(file)
+    return data['board']
 
-# Save the Sudoku board to a file
-def save_board(board, filename):
-    game_data = {'board': board}
+def save_board(filename, board):
+    """Save a Sudoku board to a JSON file."""
     with open(filename, 'w') as file:
-        json.dump(game_data, file)
+        json.dump({"board": board}, file, indent=4)
 
-# Display the current Sudoku board
 def display_board(board):
-    print("Current Sudoku Board:")
-    for row in board:
-        print(" ".join(str(num) if num != 0 else "." for num in row))
+    """Display the Sudoku board with coordinates and formatted layout."""
+    print("   A B C   D E F   G H I")
+    for i, row in enumerate(board):
+        row_display = []
+        for j, num in enumerate(row):
+            if num == 0:
+                row_display.append(" ")
+            else:
+                row_display.append(str(num))
+
+            if j in [2, 5]:
+                row_display.append("|")
+        
+        print(f"{i+1}  {' '.join(row_display)}")
+
+        if i in [2, 5]:
+            print("   -----+-----+-----")
     print()
 
-# Validate the user's move (check row, column, and 3x3 subgrid)
-def validate_move(board, row, col, number):
-    # Check if number is already in the row
-    for i in range(9):
-        if board[row][i] == number:
-            return False
-    
-    # Check if number is already in the column
-    for i in range(9):
-        if board[i][col] == number:
-            return False
-    
-    # Check if number is already in the 3x3 grid
-    grid_row_start = (row // 3) * 3
-    grid_col_start = (col // 3) * 3
-    for i in range(3):
-        for j in range(3):
-            if board[grid_row_start + i][grid_col_start + j] == number:
-                return False
-    
-    # If no conflicts, the move is valid
-    return True
+def coordinate_to_index(coordinate):
+    """Convert a board coordinates into row/column indices."""
+    columns = "ABCDEFGHI"
+    if len(coordinate) == 2 and coordinate[0] in columns and coordinate[1].isdigit():
+        col = columns.index(coordinate[0])
+        row = int(coordinate[1]) - 1
+        if 0 <= row <= 8 and 0 <= col <= 8:
+            return row, col
+    print("Invalid coordinate. Please enter a valid coordinate (e.g., 'B8').")
+    return None
 
-# Check if the game is finished (no empty squares left)
-def check_game_finished(board):
-    for row in board:
-        if 0 in row:
-            return False
-    return True
+def get_player_move():
+    """Get a valid player move in the form of a coordinate and number."""
+    while True:
+        coordinate = input("Specify a coordinate to edit or 'Q' to save and quit\n> ").upper()
+        if coordinate == 'Q':
+            return 'Q', None, None, None
+        index = coordinate_to_index(coordinate)
+        if index:
+            row, col = index
+            try:
+                num = int(input(f"What number goes in {coordinate}? "))
+                if 1 <= num <= 9:
+                    return 'M', row, col, num
+                else:
+                    print("Invalid number. Please enter a number between 1 and 9.")
+            except ValueError:
+                print("Invalid input. Please enter a number.")
+    
+def make_move(board, row, col, num):
+    """Update the board with the player's move."""
+    board[row][col] = num
 
-# Main game loop to interact with the user
 def main():
-    # Prompt the user for the filename to load
-    filename = input("Enter the filename of the saved Sudoku game (e.g., 'myGame.txt'): ")
+    filename = input("Enter filename to load board: ")
     board = load_board(filename)
     
+    display_board(board)
+
     while True:
-        display_board(board)
-        
-        # Check if the game is finished
-        if check_game_finished(board):
-            print("Congratulations! You have completed the Sudoku puzzle!")
-            break
-        
-        # Get user input for the move
-        print("Enter your move (row, column, number).")
-        try:
-            row = int(input("Row (1-9): ")) - 1
-            col = int(input("Column (1-9): ")) - 1
-            number = int(input("Number (1-9): "))
-        except ValueError:
-            print("Invalid input. Please enter numbers only.")
-            continue
-        
-        # Check for valid input ranges
-        if row not in range(9) or col not in range(9) or number not in range(1, 10):
-            print("Invalid row, column, or number. Please try again.")
-            continue
-        
-        # Check if the move is valid
-        if board[row][col] != 0:
-            print("That square is already filled. Please choose another one.")
-        elif validate_move(board, row, col, number):
-            board[row][col] = number
-            print(f"Move ({number}) placed at row {row+1}, column {col+1}.")
-        else:
-            print(f"Invalid move! You cannot place {number} at row {row+1}, column {col+1}.")
-        
-        # Ask the user if they want to save and exit
-        save_exit = input("Do you want to save the game and exit? (y/n): ").lower()
-        if save_exit == 'y':
-            save_filename = input("Enter the filename to save the game: ")
-            save_board(board, save_filename)
-            print(f"Game saved to {save_filename}. Exiting...")
+        move_type, row, col, num = get_player_move()
+
+        if move_type == 'Q':
+            save_filename = input("Enter filename to save board: ")
+            save_board(save_filename, board)
+            print("Board saved. See you later!")
             break
 
-# Run the Sudoku game
+        elif move_type == 'M':
+            make_move(board, row, col, num)
+            display_board(board)
+
 if __name__ == "__main__":
-    sudoku_game()
+    main()
